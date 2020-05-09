@@ -49,9 +49,9 @@ public class ElectronicEnvelop {
 			serverPublicKey = keyPair.getPublic();
 			serverPrivateKey = keyPair.getPrivate();
 			System.out.println("Server private Format :" + serverPrivateKey.getFormat());
-			System.out.println("Server private :" + new String(serverPrivateKey.getEncoded()));
+			System.out.println("Server private :" + new String(serverPrivateKey.getEncoded(),"UTF-8"));
 			System.out.println("Server private Format :" + serverPublicKey.getFormat());
-			System.out.println("Server public :" + new String(serverPublicKey.getEncoded()));
+			System.out.println("Server public :" + new String(serverPublicKey.getEncoded(),"UTF-8"));
 			
 			//바이너리의 Base64 인코딩 (바이너리를 확인하기 위함 또는 전송용  -- Private에 대한 밑의 Server로직은 테스트를 위함. 다른 의미는 없음 public만 해야함)
 			System.out.println("Convert Server Key for Printing");
@@ -78,9 +78,9 @@ public class ElectronicEnvelop {
 			//다시 되돌리고 확인 - 실제 전송에서는 공개키만 보내야함.
 			System.out.println("Decode Base 64 For Server");
 			System.out.println("private Format :" + privateKey2.getFormat());
-			System.out.println("private :" + new String(privateKey2.getEncoded()));
+			System.out.println("private :" + new String(privateKey2.getEncoded(),"UTF-8"));
 			System.out.println("private Format :" + publicKey2.getFormat());
-			System.out.println("public :" + new String(publicKey2.getEncoded()));
+			System.out.println("public :" + new String(publicKey2.getEncoded(),"UTF-8"));
 			
 			
 			//공개키를 받은 Client의 시작
@@ -96,9 +96,9 @@ public class ElectronicEnvelop {
 			clientPrivateKey = clientkeyPair.getPrivate();
 			clientPublicKey = clientkeyPair.getPublic();
 			System.out.println("Client private Format :" + clientPrivateKey.getFormat());
-			System.out.println("Client private :" + new String(clientPrivateKey.getEncoded()));
+			System.out.println("Client private :" + new String(clientPrivateKey.getEncoded(),"UTF-8"));
 			System.out.println("Client private Format :" + clientPublicKey.getFormat());
-			System.out.println("Client public :" + new String(clientPublicKey.getEncoded()));
+			System.out.println("Client public :" + new String(clientPublicKey.getEncoded(),"UTF-8"));
 			
 			//원문 생성
 			System.out.println("Create Document");
@@ -108,7 +108,7 @@ public class ElectronicEnvelop {
 			//문서 해시생성
 			System.out.println("Create Document Hashing");
 			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-			byte[] documentHash = messageDigest.digest(document.getBytes());
+			byte[] documentHash = messageDigest.digest(document.getBytes("UTF-8"));
 			System.out.println("Document Hash :" + Base64.getEncoder().encodeToString(documentHash));
 			
 			//문서 Client 개인키로 암호화
@@ -132,7 +132,7 @@ public class ElectronicEnvelop {
 			//Make AES key
 			System.out.println("Make AES Key");
 			cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");			
-			byte[] aesKey = "NeedMoreSecurityString".getBytes();
+			byte[] aesKey = "NeedMoreSecurityString".getBytes("UTF-8");
 			MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
 			aesKey =  sha1.digest(aesKey);
 			aesKey = Arrays.copyOf(aesKey, 16);
@@ -143,7 +143,7 @@ public class ElectronicEnvelop {
 			//Encrypt Electronic Envelop
 			System.out.println("Encrypt Electronic Envelop With AES");
 			System.out.println("Plain Envelop: " + mappedElectronicEnvelop);
-			byte[] encryptEnvelop = cipher.doFinal(mappedElectronicEnvelop.getBytes());
+			byte[] encryptEnvelop = cipher.doFinal(mappedElectronicEnvelop.getBytes("UTF-8"));
 			System.out.println("Encrypt Envelop: " + Base64.getEncoder().encodeToString(encryptEnvelop));
 			
 			//Encrypt AES Key With RSA
@@ -158,7 +158,7 @@ public class ElectronicEnvelop {
 			X509EncodedKeySpec serverSidePublicKeySpec = new X509EncodedKeySpec(prevServerPublicRestored);
 			
 			PublicKey restoredServerPublicKey = keyFactory.generatePublic(serverSidePublicKeySpec);
-			System.out.println("serverSidePublicKeyStr restored : " + new String(restoredServerPublicKey.getEncoded()));
+			System.out.println("serverSidePublicKeyStr restored : " + new String(restoredServerPublicKey.getEncoded(),"UTF-8"));
 			
 			cipher = Cipher.getInstance("RSA");
 			cipher.init(Cipher.ENCRYPT_MODE, restoredServerPublicKey);
@@ -174,7 +174,7 @@ public class ElectronicEnvelop {
 			
 			System.out.println("Server Start - Decrypt Mode");
 			PrivateKey decryptServerPrivateKey = serverPrivateKey;
-			System.out.println("Server private :" + new String(decryptServerPrivateKey.getEncoded()));
+			System.out.println("Server private :" + new String(decryptServerPrivateKey.getEncoded(),"UTF-8"));
 			
 			
 			System.out.println("Key Decrypt With Server Private key");
@@ -191,7 +191,7 @@ public class ElectronicEnvelop {
 			SecretKeySpec aesKeySpec = new SecretKeySpec(decryptedAESKey, "AES");
 			cipher.init(Cipher.DECRYPT_MODE, aesKeySpec);
 			byte[] decryptedEnvelopByte = cipher.doFinal(Base64.getDecoder().decode(envelop));
-			String decryptedEnvelop = new String(decryptedEnvelopByte);
+			String decryptedEnvelop = new String(decryptedEnvelopByte,"UTF-8");
 			System.out.println("Decrpyted Envelop: " + decryptedEnvelop);
 			
 			//기밀성에 대한 보장 - 공개키 제공자 이외엔 열 수 없음.
@@ -216,9 +216,9 @@ public class ElectronicEnvelop {
 			byte[] decryptedDocumentHash = cipher.doFinal(Base64.getDecoder().decode(plainEncryptedDocumentHash));
 			
 			MessageDigest messageDigest2 = MessageDigest.getInstance("SHA-256");
-			System.out.println("DecryptedDocumentHash from Envelop:  " + new String(decryptedDocumentHash));
-			byte[] makeHashDocument = messageDigest2.digest(plainDocument.getBytes());
-			System.out.println("DecryptedDocumentHash from Sha-256:  " + new String(makeHashDocument));
+			System.out.println("DecryptedDocumentHash from Envelop:  " + new String(decryptedDocumentHash,"UTF-8"));
+			byte[] makeHashDocument = messageDigest2.digest(plainDocument.getBytes("UTF-8"));
+			System.out.println("DecryptedDocumentHash from Sha-256:  " + new String(makeHashDocument,"UTF-8"));
 			
 			if(Arrays.equals(decryptedDocumentHash,makeHashDocument)) {
 				System.out.println("동일 무결성 보장");

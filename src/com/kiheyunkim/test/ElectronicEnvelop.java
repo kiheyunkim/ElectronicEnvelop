@@ -12,8 +12,6 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPrivateKeySpec;
-import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
@@ -111,7 +109,7 @@ public class ElectronicEnvelop {
 			System.out.println("Create Document Hashing");
 			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 			byte[] documentHash = messageDigest.digest(document.getBytes());
-			System.out.println("Document Hash :"+Base64.getEncoder().encodeToString(documentHash));
+			System.out.println("Document Hash :" + Base64.getEncoder().encodeToString(documentHash));
 			
 			//문서 Client 개인키로 암호화
 			System.out.println("Encrypt Docuemnt hasing With Client Public key");
@@ -124,8 +122,8 @@ public class ElectronicEnvelop {
 			System.out.println("Create Electronic Envelop With Document Original +  Encrypted DocumentHash + Client PublicKey");
 			Map<String, Object> electronicEnvelop = new HashMap<String, Object>();
 			electronicEnvelop.put("PlainDocument", document);
-			electronicEnvelop.put("EncryptDocument",encryptedDocumentHash);
-			electronicEnvelop.put("ClientPublicKey", clientPublicKey.getEncoded());
+			electronicEnvelop.put("EncryptDocument",Base64.getEncoder().encodeToString(encryptedDocumentHash));
+			electronicEnvelop.put("ClientPublicKey", Base64.getEncoder().encodeToString(clientPublicKey.getEncoded()));
 			ObjectMapper electronicEnvelopMapper = new ObjectMapper();
 			String mappedElectronicEnvelop = electronicEnvelopMapper.writeValueAsString(electronicEnvelop);
 			System.out.println("Electronic Encelop Convert To String : "+ mappedElectronicEnvelop);
@@ -191,25 +189,42 @@ public class ElectronicEnvelop {
 			System.out.println("open Electronic Envelop");
 			cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 			SecretKeySpec aesKeySpec = new SecretKeySpec(decryptedAESKey, "AES");
-			cipher.init(Cipher.DECRYPT_MODE, keySpec);
-			byte[] decryptedEvelop = cipher.doFinal(Base64.getDecoder().decode(envelop));
-			String decryptedEnvelop = new String(decryptedEvelop);
-			System.out.println("Decrpyted Envelop: " + decryptedEvelop);
+			cipher.init(Cipher.DECRYPT_MODE, aesKeySpec);
+			byte[] decryptedEnvelopByte = cipher.doFinal(Base64.getDecoder().decode(envelop));
+			String decryptedEnvelop = new String(decryptedEnvelopByte);
+			System.out.println("Decrpyted Envelop: " + decryptedEnvelop);
 			
+			//기밀성에 대한 보장 - 공개키 제공자 이외엔 열 수 없음.
 			ObjectMapper envelopMapper = new ObjectMapper();
-			HashMap<String, Object> decryptedEnvelopMap = envelopMapper.readValue(decryptedEvelop, HashMap.class);
+			HashMap<String, Object> decryptedEnvelopMap = envelopMapper.readValue(decryptedEnvelop, HashMap.class);
 			System.out.println("Envelop Open");
-			System.out.println("PlainDocument: "+ decryptedEnvelopMap.get("PlainDocument"));
-			System.out.println("EncryptDocument: "+ decryptedEnvelopMap.get("EncryptDocument"));
-			System.out.println("ClientPublicKey: "+ decryptedEnvelopMap.get("ClientPublicKey"));
-			/*
-			 * electronicEnvelop.put("PlainDocument", document);
-			 * electronicEnvelop.put("EncryptDocument",encryptedDocumentHash);
-			 * electronicEnvelop.put("ClientPublicKey", clientPublicKey.getEncoded());
-			 */
 			
+			String plainDocument = (String) decryptedEnvelopMap.get("PlainDocument");
+			String plainEncryptedDocumentHash = (String) decryptedEnvelopMap.get("EncryptDocument");
+			String plainClientPublicKey =  (String) decryptedEnvelopMap.get("ClientPublicKey");
+
+			System.out.println("PlainDocument: "+ plainDocument);
+			System.out.println("EncryptDocument: "+ plainEncryptedDocumentHash);
+			System.out.println("ClientPublicKey: "+ plainClientPublicKey);
 			
+			System.out.println("Restore Client Public Key in Envelop");
+			X509EncodedKeySpec restoredRsaPublicKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(plainClientPublicKey));
+			PublicKey restoredPublicKey =  keyFactory.generatePublic(restoredRsaPublicKeySpec);
 			
+			cipher = Cipher.getInstance("RSA");
+			cipher.init(Cipher.DECRYPT_MODE, restoredPublicKey);
+			byte[] decryptedDocumentHash = cipher.doFinal(Base64.getDecoder().decode(plainEncryptedDocumentHash));
+			
+			MessageDigest messageDigest2 = MessageDigest.getInstance("SHA-256");
+			System.out.println("DecryptedDocumentHash from Envelop:  " + new String(decryptedDocumentHash));
+			byte[] makeHashDocument = messageDigest2.digest(plainDocument.getBytes());
+			System.out.println("DecryptedDocumentHash from Sha-256:  " + new String(makeHashDocument));
+			
+			if(decryptedDocumentHash.equals(makeHashDocument)) {
+				System.out.println("동일 무결성 보장");
+			}else {
+				System.out.println("불일치 무결성 문제있음");
+			}
 			
 			
 			

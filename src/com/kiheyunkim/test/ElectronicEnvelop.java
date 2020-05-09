@@ -220,14 +220,11 @@ public class ElectronicEnvelop {
 			byte[] makeHashDocument = messageDigest2.digest(plainDocument.getBytes());
 			System.out.println("DecryptedDocumentHash from Sha-256:  " + new String(makeHashDocument));
 			
-			if(decryptedDocumentHash.equals(makeHashDocument)) {
+			if(Arrays.equals(decryptedDocumentHash,makeHashDocument)) {
 				System.out.println("동일 무결성 보장");
 			}else {
 				System.out.println("불일치 무결성 문제있음");
 			}
-			
-			
-			
 			
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();

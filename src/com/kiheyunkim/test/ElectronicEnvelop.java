@@ -13,6 +13,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -35,79 +36,73 @@ public class ElectronicEnvelop {
 			
 			KeyPair keyPair = generator.genKeyPair();
 			
+			//키생성
+			System.out.println("Server key Created");
 			serverPublicKey = keyPair.getPublic();
 			serverPrivateKey = keyPair.getPrivate();
-						
-			KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+			System.out.println("private Format :" + serverPrivateKey.getFormat());
+			System.out.println("private :" + new String(serverPrivateKey.getEncoded()));
+			System.out.println("private Format :" + serverPublicKey.getFormat());
+			System.out.println("public :" + new String(serverPublicKey.getEncoded().toString()));
+			
+			//바이너리의 Base64 인코딩 (바이너리를 확인하기 위함 또는 전송용  -- Private에 대한 밑의 Server로직은 테스트를 위함. 다른 의미는 없음 public만 해야함)
+			System.out.println("Convert Server Key for Printing");
+			String encodedStringPrivateKey = Base64.getEncoder().encodeToString(serverPrivateKey.getEncoded());
+			String encodedStringPublicKey = Base64.getEncoder().encodeToString(serverPublicKey.getEncoded());
+			System.out.println("Byte To Base 64 private :" + encodedStringPrivateKey);
+			System.out.println("Byte To Base 64 public :" + encodedStringPublicKey);
 		
-			X509EncodedKeySpec rsaPublicKeySpec = keyFactory.getKeySpec(serverPublicKey, X509EncodedKeySpec.class);
-			PKCS8EncodedKeySpec rsaPrivateKeySpec = keyFactory.getKeySpec(serverPrivateKey, PKCS8EncodedKeySpec.class);
-			/*
-			System.out.println("Server Public  key modulus : " + rsaPublicKeySpec.getModulus());
-			System.out.println("Server Public  key exponent: " + rsaPublicKeySpec.getPublicExponent());
-			System.out.println("Server Private key modulus : " + rsaPrivateKeySpec.getModulus());
-			System.out.println("Server Private key exponent: " + rsaPrivateKeySpec.getPrivateExponent());
-			*/
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (InvalidKeySpecException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	static void Client() {
-		SecureRandom secureRandom = new SecureRandom();
-		System.out.println("------Client Start------");
-		try {
-			KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+			//Base 64암호화 해제
+			System.out.println("Decode Base 64 For Server");
+			byte[] decodedPrivateKey = Base64.getDecoder().decode(encodedStringPrivateKey);
+			byte[] decodedPublicKey = Base64.getDecoder().decode(encodedStringPublicKey);		
+			System.out.println("private decoded:" + decodedPrivateKey);
+			System.out.println("public decoded:" + decodedPublicKey);
+			
+			//byte[] 에서  Key Spec으로 변환
+			System.out.println("Convert Byte To Key");
+			PKCS8EncodedKeySpec rsaPrivateKeySpec = new PKCS8EncodedKeySpec(decodedPrivateKey);
+			X509EncodedKeySpec rsaPublicKeySpec = new X509EncodedKeySpec(decodedPublicKey);
+			KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+			PrivateKey privateKey2 = keyFactory.generatePrivate(rsaPrivateKeySpec);
+			PublicKey publicKey2 = keyFactory.generatePublic(rsaPublicKeySpec);
+			
+			//다시 되돌리고 확인 - 실제 전송에서는 공개키만 보내야함.
+			System.out.println("Decode Base 64 For Server");
+			System.out.println("private Format :" + privateKey2.getFormat());
+			System.out.println("private :" + new String(privateKey2.getEncoded()));
+			System.out.println("private Format :" + publicKey2.getFormat());
+			System.out.println("public :" + new String(publicKey2.getEncoded().toString()));
+			
+			
+			//공개키를 받은 Client의 시작
+			System.out.println("Client Start");
+			//서버의 공개키를 받았다고 가정.
+			String baseEncodedPublicKey = encodedStringPublicKey;
 			generator.initialize(1024, secureRandom);
 			
-			KeyPair keyPair = generator.genKeyPair();
+			KeyPair clientkeyPair = generator.genKeyPair();
 			
-			clientPublicKey = keyPair.getPublic();
-			clientPrivateKey = keyPair.getPrivate();
-						
-			KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-		
-			X509EncodedKeySpec rsaPublicKeySpec = keyFactory.getKeySpec(serverPublicKey, X509EncodedKeySpec.class);
-			PKCS8EncodedKeySpec rsaPrivateKeySpec = keyFactory.getKeySpec(serverPrivateKey, PKCS8EncodedKeySpec.class);
+			//클라이언트의 키생성
+			System.out.println("Create Client Key");
+			clientPrivateKey = clientkeyPair.getPrivate();
+			clientPublicKey = clientkeyPair.getPublic();
+			System.out.println("private Format :" + clientPrivateKey.getFormat());
+			System.out.println("private :" + new String(clientPrivateKey.getEncoded()));
+			System.out.println("private Format :" + clientPublicKey.getFormat());
+			System.out.println("public :" + new String(clientPublicKey.getEncoded().toString()));
 			
-			String plainText = "Hello World!";
 			
-			try {
-				Cipher ciper = Cipher.getInstance("RSA");
-				ciper.init(Cipher.ENCRYPT_MODE, clientPublicKey);
-				
-				byte[] encrypt = ciper.doFinal(plainText.getBytes());
-				System.out.println("Plain:" + new String(plainText));
-				System.out.println("Encrypt:" + new String(encrypt));
-				
-				ciper.init(Cipher.DECRYPT_MODE, clientPrivateKey);
-				
-			} catch (InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 			
-			/*
-			 * System.out.println("Client Public  key modulus : " +
-			 * rsaPublicKeySpec.getModulus());
-			 * System.out.println("Client Public  key exponent: " +
-			 * rsaPublicKeySpec.getPublicExponent());
-			 * System.out.println("Client Private key modulus : " +
-			 * rsaPrivateKeySpec.getModulus());
-			 * System.out.println("Client Private key exponent: " +
-			 * rsaPrivateKeySpec.getPrivateExponent());
-			 */ 
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
 			e.printStackTrace();
 		}
 	}
+
 	
 	static public void main(String[] args) {
 		Server();
-		Client();
 	}
 }
